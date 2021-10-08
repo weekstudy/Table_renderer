@@ -8,6 +8,7 @@
 .idea
 *.log
 __pycache__
+fonts
 *.jsonl
 *.json
 *.html
