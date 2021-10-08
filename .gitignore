@@ -1,0 +1,14 @@
+
+*.jpg
+*.JPG
+*.png
+*.PNG
+*.txt
+.DS_Store
+.idea
+*.log
+__pycache__
+*.jsonl
+*.json
+*.html
+split_jsonl.py

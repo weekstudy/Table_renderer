@@ -1,0 +1,9 @@
+char_size: 20
+dict_file: ./utils/dict/cht_usually_dict.txt
+font: ./fonts/KaitiGB2312.ttf
+font_color: black
+h_char_size: 20
+input_dir: ./examples/pubtabnet/train1
+jsonlfile: ./examples/output_0-10000.jsonl
+line_space: 0
+output_dir: ./pubtabnet/
