@@ -11,10 +11,14 @@
 import os
 import sys
 import jsonlines
+__dir__ = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(__dir__)
+sys.path.append('.')
 
 from configure.Config import *
 from utils.utils import *
 from pubtabnet_ch.pubtabnet import *
+from log.log import *
 
 
 def gen_pubtabnet_ch(num, dt, input_dir, output_dir, fp, kind='RARE'):
@@ -28,8 +32,9 @@ def gen_pubtabnet_ch(num, dt, input_dir, output_dir, fp, kind='RARE'):
 
     end = num
     output_basename = 'pubtabnet_ch_{}_{}/'.format(dt, end)
-    output_labels = output_dir + 'pubtabnet_{}_labels_{}.txt'.format(dt, end)
-    output_jsonl = output_dir + 'PubTabNet_ch_{}_{}.jsonl'.format(dt, end)
+    output_labels = output_dir + 'pubtabnet_ch{}_labels_{}.txt'.format(dt, end)
+    output_jsonl = output_dir + 'pubtabnet_ch_{}_{}.jsonl'.format(dt, end)
+    log_file = 'pubtabnet_ch_train_{}_{}.log' .format(dt, end)
 
     output_images = output_dir + output_basename
     config['input_dir'] = input_dir
@@ -40,23 +45,25 @@ def gen_pubtabnet_ch(num, dt, input_dir, output_dir, fp, kind='RARE'):
     if not os.path.exists(output_images):
         os.makedirs(output_images)
         os.chmod(output_images, 0o777)
-    print('save in ', output_images)
+    logger = Logger(fp=output_dir+log_file)
+    logger.info('images saved in ' + output_images)
+    logger.info('labels saved in' + output_jsonl)
+    logger.info('log file saved in' + output_dir+log_file)
+    logger.info('==' * 30)
+
     items = get_items(jsonl_file=fp, start=0, end=end)
     cnt = 0
     pics = []
     for item in items:
         cnt += 1
-        pic = ExcelPic(input_dir, item)
-        # if pic.img_name == 'PMC1802082_003_00.png':
+        pic = PubTabNet(input_dir, item)
+        # if pic.img_name == 'PMC1314922_002_01.png':
         img_path = os.path.join(output_images, pic.img_name)
-        # print('line 207 :', cnt, '->', img_path)
-        # 表格结构
-        # pic.get_structure()
-        # pil_img = pic.draw_structure()
-        # 生成图片
+
         pil_img = pic.gen_img(font_type, char_dict, fp=None, scales=1, bboxon=False, lineon=False)
         pics.append(pic)
         # print(img_path)
+        logger.info(str(cnt)+':'+img_path)
         pil_img.save(img_path)
 
     if kind == "DB":
@@ -67,8 +74,6 @@ def gen_pubtabnet_ch(num, dt, input_dir, output_dir, fp, kind='RARE'):
     elif kind == 'ALL':
         write_labels(pics, output_labels, output_basename)
         write_jsonl(pics, output_jsonl)
-
-    print(cnt)
 
 
 def gen_pubtabnet_box_img(num, dt, input_dir, output_dir, fp, kind='RARE'):
@@ -100,7 +105,7 @@ def gen_pubtabnet_box_img(num, dt, input_dir, output_dir, fp, kind='RARE'):
     pics = []
     for item in items:
         cnt += 1
-        pic = ExcelPic(input_dir, item)
+        pic = PubTabNet(input_dir, item)
         # if pic.img_name == 'PMC1802082_003_00.png':
         img_path = os.path.join(output_images, pic.img_name)
         print('line 207 :', cnt, '->', img_path)
@@ -132,7 +137,6 @@ def write_labels(pics, output_labels, output_basename):
                 result = {"transcription": token_bbox['tokens'], "points": points}
                 lables.append(result)
             fw.write(pic_path + '\t' + json.dumps(lables, ensure_ascii=False) + '\n')
-    print('saved in ', output_labels)
 
 
 def write_jsonl(pics, output_jsonl):
@@ -146,7 +150,6 @@ def write_jsonl(pics, output_jsonl):
                      'imgid': pic.imgid,
                      'html': html}
             fw.write(label)
-    print('saved in ', output_jsonl)
 
 
 def calibrate_structure():
@@ -162,7 +165,7 @@ def calibrate_structure():
     imgs = []
     for item in items:
         cnt += 1
-        pic = ExcelPic(input_dir, item)
+        pic = PubTabNet(input_dir, item)
         # if pic.img_name == 'PMC3241372_004_00.png':
         # img_path = os.path.join(output_images, pic.img_name)
         # 表格结构
