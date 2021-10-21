@@ -17,7 +17,7 @@ from tools.TextImage import *
 from tools.charspic import *
 
 
-def receipt(imgs_dir, basename, img_name):
+def receipt(imgs_dir, basename, img_name, logger):
     font_path = "./fonts/KaitiGB2312.ttf"
     font_path2 = './fonts/Times New Roman.ttf'
     char_dict_path = './utils/dict/cht_usually_dict.txt'
@@ -1156,8 +1156,8 @@ def receipt(imgs_dir, basename, img_name):
         os.chmod(output_dir, 0o777)
     img_name = '%05d.jpg' % img_name
     img_path = os.path.join(imgs_dir, basename, img_name)
-    print(img_path)
-
+    # print(img_path)
+    logger.info(img_path)
     # 校验文本框坐标位置
     for tmp_label in label:
         tmp_bbox = tmp_label['points']

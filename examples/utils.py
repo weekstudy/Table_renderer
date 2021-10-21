@@ -1,8 +1,4 @@
-import json
-import sys
 
-from IPython.display import Image as displayImage
-from IPython.core.display import display, HTML
 
 import re
 from bs4 import BeautifulSoup as bs
@@ -50,9 +46,9 @@ if __name__ == '__main__':
 
     # f = './PubTabNet_Examples.json'
     import os
-    f = '/Users/zhouqiang/YaSpeed/Table_renderer/pubtabnet/PubTabNet_box_train_10.jsonl'
+    f = '/Users/zhouqiang/YaSpeed/Table_renderer/pubtabnet/pubtabnet_ch_train_10.jsonl'
     # f = '/Users/zhouqiang/YaSpeed/Table_renderer/receipts/receipts_train_labels_10.jsonl'
-    html_dir = './htmls/box/'
+    html_dir = './htmls/train/'
     if not os.path.exists(html_dir):
         os.makedirs(html_dir)
     with open(f, 'r') as fp:

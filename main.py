@@ -25,18 +25,30 @@ def gen_batch_images():
 
 
 def gen_receipts():
+    """
+    generate the images for DB
+    :return:
+    """
     num = 1
     labels = []
 
     output_dir = './receipts/'
-    # output_dir = '../Paddle_OCR/train_data/icdar2015/text_localization/'
+    # output_dir = '../Paddle_OCR/train_data/det_data/text_localization/'
 
-    labels_txt = './receipts_train_labels_%d_v3.txt' % num
-    output_basename = 'receipts_train_%d_v3/' % num
+    # todo add logger
+    labels_txt = './receipts_train_labels_%d.txt' % num
+    output_basename = 'receipts_train_%d/' % num
+    log_file = 'receipts_train_%d.log' % num
+
     output_labels = output_dir + labels_txt
 
+    logger = Logger(fp=output_dir + log_file)
+    logger.info('images saved in ' + output_dir + output_basename)
+    logger.info('log file saved in ' + output_dir + log_file)
+    logger.info('labels saved in ' + output_labels)
+
     for i in range(num):
-        label = receipt(output_dir, output_basename, i)
+        label = receipt(output_dir, output_basename, i, logger)
         labels.append(label)
     with open(output_labels, 'w') as fw:
         for line in labels:
@@ -51,50 +63,49 @@ def gen_receipts2():
     output_dir = './receipts/'
 
     # output_dir = '../PaddleOCR2.3/train_data/table/synth_receipts/'
-    lables_jsonl = 'receipts_train_labels_%d_v3.jsonl' % num
-    output_basename = 'receipts_train_%d_v3/' % num
-    log_file = 'receipts_train_%d_v3.log' % num
+    lables_jsonl = 'receipts_table_train_labels_%d.jsonl' % num
+    output_basename = 'receipts_table_train_%d/' % num
+    log_file = 'receipts_table_train_%d.log' % num
     output_labels2 = output_dir + lables_jsonl
 
     html_indx = []
     logger = Logger(fp=output_dir + log_file)
     logger.info('images saved in ' + output_dir + output_basename)
-    logger.info('labels saved in ' + output_labels2)
     logger.info('log file saved in ' + output_dir + log_file)
+    logger.info('labels saved in ' + output_labels2)
     logger.info('==' * 30)
     for i in range(num):
-        tmp_i = random.randint(1, 3)
+        tmp_i = random.randint(1, 3)  # 用来控制产生几行表格
         label = receipt2(output_dir, output_basename, i, tmp_i, logger)
         labels.append(label)
         html_indx.append(tmp_i)
 
     jsonl_lines = gen_recepits_html(labels=labels, dt='train', index=html_indx)
     with jsonlines.open(output_labels2, 'w') as fw:
-        print('saved in ', output_labels2)
         for item in jsonl_lines:
             fw.write(item)
     os.chmod(output_labels2, 0o777)
-    print("Done")
 
 
 def gen_pubtabnet():
+    """
+    replace english with chinese for pubtabnet
+    :return:
+    """
     input_dir = './examples/pubtabnet/train1'
     jsonl_file = './examples/output_0-10000.jsonl'
     # jsonl_file = '/Users/zhouqiang/YaSpeed/Table_renderer/examples/PubTabNet_2.0.0_val.jsonl'
     output_dir = './pubtabnet/'
 
-    # DB label
-    # output_dir = '../Paddle_OCR/train_data/icdar2015/text_localization/'
-    # jsonl_file = '../Paddle_OCR/train_data/pubtabnet/PubTabNet_2.0.0.jsonl'
-    # input_dir = '../Paddle_OCR/train_data/pubtabnet/train'
-
     # RARE label
+
     # output_dir = '../PaddleOCR2.3/train_data/table/pubtabnet_ch/'
     # jsonl_file = '../Paddle_OCR/train_data/pubtabnet/PubTabNet_2.0.0.jsonl'
     # input_dir = '../Paddle_OCR/train_data/pubtabnet/train'
 
+    # todo 直接在原图上贴上中文字可以保证有表格线
     gen_pubtabnet_ch(num=1, dt='train', input_dir=input_dir,
-                     output_dir=output_dir, fp=jsonl_file, kind='ALL')
+                     output_dir=output_dir, fp=jsonl_file, kind='RARE')
 
 
 def gen_pubtabnet_box():
