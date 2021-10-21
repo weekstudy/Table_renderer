@@ -25,6 +25,7 @@ class CharsPic(object):
         self.text_string = text_string
         self.text = text_string.text
         self.font = text_string.font
+        self.color = text_string.color
         self.bbox = None
         self.size = None
         self.pic = None
@@ -39,25 +40,25 @@ class CharsPic(object):
             # 如果没有字间距，没有行间距
             if self.text_string.char_space == 0 and self.text_string.line_space == 0:
                 w, h = self.font.getsize(subtext_list2[-1])
-                self.size = (w, int(h*len(subtext_list)))
+                self.size = (w, int(h * len(subtext_list)))
             else:
                 w, h = 0, 0
                 for char in subtext_list2[-1]:
                     # draw.text((x, y), char, font=self.font, fill=(79, 141, 190))
                     char_w = self.font.getsize(char)[0]
                     w += char_w + self.text_string.char_space
-                h = len(subtext_list)*(self.font.getsize(self.text)[1])\
-                    + self.text_string.line_space*(len(subtext_list)-1)
+                h = len(subtext_list) * (self.font.getsize(self.text)[1]) \
+                    + self.text_string.line_space * (len(subtext_list) - 1)
                 self.size = (w, h)
         pil_img = Image.new('RGB', (self.size[0] + 2, self.size[1] + 2), 'white')
         draw = ImageDraw.Draw(pil_img)
         x, y = 1, 1
         for subtext in subtext_list:
-            if self.text_string.char_space == 0 and self.text_string.line_space==0:
-                draw.text((x, y), subtext, font=self.font, fill=(79, 141, 190))
+            if self.text_string.char_space == 0 and self.text_string.line_space == 0:
+                draw.text((x, y), subtext, font=self.font, fill=self.color)
             else:
                 for char in subtext:
-                    draw.text((x, y), char, font=self.font, fill=(79, 141, 190))
+                    draw.text((x, y), char, font=self.font, fill=self.color)
                     char_w = self.font.getsize(char)[0]
                     x += char_w + self.text_string.char_space
                 x = 1
@@ -74,6 +75,7 @@ class CharsPic(object):
             pil_img = Image.fromarray(new_pic)
         self.pic = pil_img
         # pil_img.save('./test.jpg')
+        return self.pic
 
     # 定义一个各通道值 0-255范围 超出按截断处理
     @staticmethod
