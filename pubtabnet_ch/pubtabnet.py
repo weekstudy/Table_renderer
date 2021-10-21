@@ -9,23 +9,14 @@
  
 """
 
-import os
-import copy
-import cv2
 import jsonlines
-import math
-import numpy as np
 import re
-import random
-
-from PIL import Image
-from PIL import ImageFont
-from PIL import ImageDraw
 
 from TextString.TextString import *
+from tools.charspic import *
 
 
-class ExcelPic(object):
+class PubTabNet(object):
     def __init__(self, img_dir, item: dict):
         self.item = item
         self.root = img_dir
@@ -36,7 +27,7 @@ class ExcelPic(object):
         # self.cells_structure = ''.join(self.html['structure']['tokens'])
         self.cells_structure_elems = self.html['structure']['tokens']
         self.cells_content = self.html['cells']
-        self.src_img = self.src_img()
+        self.src_img = self._src_img()
         self.src_size = self.src_img.size
         self.target_img = None
         self.tokens_bboxes = None
@@ -48,7 +39,7 @@ class ExcelPic(object):
         self.cols = None
         self.draw = None
 
-    def src_img(self):
+    def _src_img(self):
         img_path = os.path.join(self.root, self.img_name)
         # img_path = '/Users/zhouqiang/YaSpeed/Table_renderer/examples/pubtabnet/train1/PMC1802082_003_00.png'
         pil_img = Image.open(img_path)
@@ -58,7 +49,9 @@ class ExcelPic(object):
         img_font = ImageFont.truetype(font, size=9)
         en_font_path = './fonts/Times New Roman.ttf'
         ch_dict = ch_dict
-        target_img = Image.new('RGB', (int(self.src_size[0] + 5), int(self.src_size[1] + 5)), 'white')
+        # 用原图
+        # target_img = Image.new('RGB', (int(self.src_size[0] + 5), int(self.src_size[1] + 5)), 'white')
+        target_img = self.src_img
         self.draw = ImageDraw.Draw(target_img)
         draw = self.draw
         assert self.html is not None, 'html is None'
@@ -100,84 +93,93 @@ class ExcelPic(object):
                 continue
 
             bbox = list(map(int, bbox))
-            iou_list = cal_IOU(bbox, bboxes_list)
-            # 如果返回是数，说明有重叠，则当前框不要，并且记下第几个框与当前框重叠
-            for key, val in iou_list.items():
-                if val != 0 and val != 1.0:
-                    tmp.append(key)
-                    # bboxes_list[key] = [0, 0, 0, 0]
-            if a in tmp:
-                continue
+            # 后面对文本串图片进行了缩放
+            # todo 原图的bbox就有重合，有的还挺大
+            # iou_list = cal_IOU(bbox, bboxes_list)
+            # # 如果返回是数，说明有重叠，则当前框不要，并且记下第几个框与当前框重叠
+            # for key, val in iou_list.items():
+            #     if val > 0.1 and val != 1.0:
+            #         tmp.append(key)
+            #         # bboxes_list[key] = [0, 0, 0, 0]
+            # if a in tmp:
+            #     # todo 可以把有iou的bbox其中一个抹掉
+            #     bbox = bboxes_list[a]
+            #     _img = Image.new('RGB', (int(bbox[2] - bbox[0]), int(bbox[3] - bbox[1])), 'white')
+            #     target_img.paste(_img, bbox)
+            #     cell['tokens'] = ''
+            #     res.append({'tokens': ''})
+            #     continue
             string = ''.join(cell['tokens'])
-            num_strs = list(re.finditer(r'\d+\.?\d*', string))
-            en_strs = list(re.finditer(r'[A-Za-z ]+', string))
-            # label = re.finditer(r'(^.*<[^<>].*>).*(/.*>)', string)
             # 匹配html中元素标签
+            # string = "<sub><sup><b><i>16266</i>vaam<i>'2,2'</i></b></sub></sup>"
             l_label = list(re.finditer(r'<[A-Za-z =0-9]*>', string))
-            # todo 这里有可能出现一个单元格里面有连续标签的情况，比如<i>'1'</i><i>'2,2'<i>,
-            ls = ''.join(s.group() for s in l_label)
+            # 这里有可能出现一个单元格里面有连续标签的情况，比如<i>'1'</i><i>'2,2'</i>,
+            ls = [s.group() for s in l_label]
             r_label = list(re.finditer(r'</[A-Za-z 0-9]*>', string))
-            rs = ''.join(s.group() for s in r_label)
+            rs = [s.group() for s in r_label]
+
+            new_string = string
+            # 去掉cell 里面的标签
+            for v in ls + rs:
+                new_string = new_string.replace(v, '')
+
+            num_strs = list(re.finditer(r'\d+\.?\d*', new_string))
+            en_strs = list(re.finditer(r'[A-Za-z ]+', new_string))
 
             tmp_num = ''.join(num_str.group() for num_str in num_strs)
             tmp_string = ''.join(en_str.group() for en_str in en_strs)
-            tmp_string2 = string
-            # 字母字符串，包括特殊字符，不包括标签<>\</>
-            for v in tmp_num + ls + rs:
-                tmp_string2 = tmp_string2.replace(v, '')
-
-            tmp_num2 = string
-            # 数字字符串,包括特殊字符，不包括标签<>\</>
-            for k in tmp_string + ls + rs:
-                tmp_num2 = tmp_num2.replace(k, '')
 
             # 如果英文字符的个数多余数字个数，就替换成中文
-            if len(tmp_string2) > len(tmp_num2):
+            if len(tmp_string) > len(tmp_num):
                 char_w = 7
                 # 假设字体大小为最小高
                 char_w = std_h - 1
                 img_font = ImageFont.truetype(font, size=char_w)
-                text, rows = self.get_text2(bbox, ch_dict, char_w=char_w, char_h=char_w, font=img_font)
                 # todo 这里有可能返回0行
+                text, rows = self.get_text2(bbox, ch_dict, char_w=char_w, char_h=char_w, font=img_font)
+                assert rows != 0, "the text is none,but can't is none"
+                # text_img = Image.new('RGB', (int(bbox[2] - bbox[0] + 5), int(bbox[3] - bbox[1] + 5)), 'white')
+                tmp_pic = CharsPic(TextString(text_string=text, font=font, color=(0, 0, 0), char_size=char_w))
+                text_pic = tmp_pic.gen_pic(isblur=False, isnosie=False, bboxon=bboxon)
+
+                bbox_w = bbox[2] - bbox[0]
+                bbox_h = bbox[3] - bbox[1]
+                # if bbox_w < text_pic.size[0] and bbox_h < text_pic.size[1]:
+                #     bbox = [bbox[0], bbox[1], bbox[0] + text_pic.size[0], bbox[1] + text_pic.size[1]]
+                # else:
+                    # 缩放到原来的大小以遮住原来的字符
+                text_pic = text_pic.resize(size=(bbox_w, bbox_h))
+                target_img.paste(text_pic, bbox)
+
                 # 把label也替换掉
                 tmp_label = []
                 subtext_list = text.split('\n')
                 for subtext in subtext_list:
                     for char in subtext:
                         tmp_label.append(char)
-                tmp_label.insert(0, ls)
-                tmp_label.append(rs)
                 cell['tokens'] = tmp_label
-                if rows == 0 and len(subtext_list) == 1:
-                    # 说明只有一行且字体太大被删了
-                    print(string, a, text, rows)
-                    img_font = ImageFont.truetype(font, size=int(char_w * 0.8))
-                    rows = 1
-                if len(subtext_list) != rows:
-                    print(string, "-->", a, "-->", text, '-->', subtext_list, "-->", rows)
-                    raise ValueError(len(subtext_list), rows)
-                # assert len((subtext_list)) == rows
-                subtext_w, subtext_h = img_font.getsize(subtext_list[0])
-                x = bbox[0] + subtext_w
-                y = bbox[1] + int(rows * subtext_h)
-                tmp_x, tmp_y = bbox[0], bbox[1]
-                for subtext in subtext_list:
-                    # print('line 152 ',img_font.getsize(subtext))
-                    # todo 这里存在有的字无法显示的可能性
-                    draw.text((tmp_x, tmp_y), subtext, fill='black', font=img_font)
-                    tmp_y += subtext_h
 
-                new_bbox = [bbox[0], bbox[1], x, y]
+                # todo 这里坐标可能不对
+                new_bbox = [bbox[0], bbox[1], bbox[2], bbox[3]]
                 cell['bbox'] = new_bbox
                 res.append({'tokens': text, 'bbox': new_bbox})
             else:
                 # 说明单元格是数字多，不改写
-                tmp_img = self.src_img.crop(bbox)
-                target_img.paste(tmp_img, bbox)
+                # todo 这里不用处理都可以
+                # tmp_img = self.src_img.crop(bbox)
+                # target_img.paste(tmp_img, bbox)
                 new_bbox = [bbox[0], bbox[1], bbox[2], bbox[3]]
-                res.append({'tokens': tmp_num2, 'bbox': new_bbox})
+                tmp_label = []
+                # 去掉 单元格内的标签label
+                for cc in new_string:
+                    tmp_label.append(cc)
+                cell['tokens'] = tmp_label
+                res.append({'tokens': new_string, 'bbox': new_bbox})
         if bboxon:
             for ii in res:
+                bbox = ii.get('bbox', None)
+                if bbox is None:
+                    continue
                 bbox = ii['bbox']
                 draw.rectangle([(bbox[0], bbox[1]), (bbox[2], bbox[3])], outline='red')
 
