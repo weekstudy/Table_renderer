@@ -668,7 +668,7 @@ def receipt2(imgs_dir, basename, img_name, rows, logger):
         os.chmod(imgs_dir, 0o777)
     img_name = '%05d.jpg' % img_name
     img_path = os.path.join(imgs_dir, basename, img_name)
-    print(img_path)
+    # print(img_path)
     logger.info(img_path)
     # 校验文本框坐标位置
     for tmp_label in label:
@@ -742,7 +742,7 @@ def rectangle(canvas, labels):
 def get_html_ele(i):
     # html = '../utils/dict/receipts_html_dict.txt'
     # html = './tools/receipts.html'
-    html = './tools/receipt_htmls/receipts%d.html' % i
+    html = './tools/receipt_std_htmls/receipts%d.html' % i
     with open(html, 'r') as fr:
         ele_str = fr.readlines()
     html_string = ''
@@ -805,33 +805,53 @@ def get_eles(thead_list, kind='<thead>'):
 
 
 def format_html():
-    ''' Formats HTML code from tokenized annotation of img
-    '''
+    """
+    Formats HTML code from tokenized annotation of img
+    测试表格标注是否正确
+    """
     from bs4 import BeautifulSoup as bs
-    html_string = '''<html>
-                     <head>
-                     <meta charset="UTF-8">
-                     <style>
-                     table, th, td {
-                       border: 1px solid black;
-                       font-size: 10px;
-                     }
-                     </style>
-                     </head>
-                     <body>
-                     <table frame="hsides" rules="groups" width="100%%">
-                         %s
-                     </table>
-                     </body>
-                     </html>''' % ''.join(get_html_ele())
+    import jsonlines
+    f = '/Users/zhouqiang/YaSpeed/Table_renderer/receipts/receipts_train_labels_2_v3.jsonl'
+    htmls_dir = '/Users/zhouqiang/YaSpeed/Table_renderer/receipts/htmls/'
+    if not os.path.exists(htmls_dir):
+        os.makedirs(htmls_dir)
 
-    soup = bs(html_string, features="html.parser")
-    html_string = soup.prettify()
-    with open('./test_receipts.html', 'w') as fw:
-        fw.write(html_string)
-    return html_string
+    with open(f, 'r') as fp:
+        for item in jsonlines.Reader(fp):
+            structure = item['html']['structure']['tokens']
+
+            html_string = '''<html>
+                             <head>
+                             <meta charset="UTF-8">
+                             <style>
+                             table, th, td {
+                               border: 1px solid black;
+                               font-size: 10px;
+                             }
+                             </style>
+                             </head>
+                             <body>
+                             <table frame="hsides" rules="groups" width="100%%">
+                                 %s
+                             </table>
+                             </body>
+                             </html>''' % ''.join(structure)
+            cell_nodes = list(re.finditer(r'(<td[^<>]*>)(</td>)', html_string))
+            assert len(cell_nodes) == len(
+                item['html']['cells']), 'Number of cells defined in tags does not match the length of cells'
+            cells = [''.join(c['tokens']) for c in item['html']['cells']]
+            offset = 0
+            for n, cell in zip(cell_nodes, cells):
+                # 将数据填入对应单元格，第一个分组的结束，第二个分组的开始
+                html_string = html_string[:n.end(1) + offset] + cell + html_string[n.start(2) + offset:]
+                offset += len(cell)
+            soup = bs(html_string, features="html.parser")
+            html_string = soup.prettify()
+            filename = item['filename'][:-3]+'html'
+            with open(htmls_dir+filename, 'w') as fw:
+                fw.write(html_string)
 
 
 if __name__ == '__main__':
-    get_html_ele()
-    # format_html()
+    # get_html_ele(1)
+    format_html()
